@@ -55,21 +55,21 @@ def create_order_status(df):
 
 # Load dataset
 datetime_columns = ["order_approved_at", "order_delivered_carrier_date", "order_delivered_customer_date", "order_estimated_delivery_date", "order_purchase_timestamp", "shipping_limit_date"]
-all_df = pd.read_csv('/content/drive/MyDrive/Submission/Dashboard/all_data.csv')
+all_df = pd.read_csv('https://raw.githubusercontent.com/uray03/Analis_Data/main/Dashboard/all_data.csv')
 all_df.sort_values(by="order_approved_at", inplace=True)
-all_df.reset_index(inplace=True)
+all_df.reset_index(drop=True, inplace=True)  # No need to keep the old index
 
 # Convert columns to datetime
 for col in datetime_columns:
     all_df[col] = pd.to_datetime(all_df[col])
 
 # Filter Data
-min_date = all_df["order_approved_at"].min()
-max_date = all_df["order_approved_at"].max()
+min_date = all_df["order_approved_at"].min().date()
+max_date = all_df["order_approved_at"].max().date()
 
 with st.sidebar:
     st.title("Dicoding E-Commerce")
-    st.image("/content/drive/MyDrive/Submission/Dashboard/logo.png")
+    st.image("logo.png")  # Make sure the image path is correct or upload it
     start_date, end_date = st.date_input(
         label="Date Range",
         min_value=min_date,
@@ -77,7 +77,8 @@ with st.sidebar:
         value=[min_date, max_date]
     )
 
-main_df = all_df[(all_df["order_approved_at"] >= str(start_date)) & (all_df["order_approved_at"] <= str(end_date))]
+# Filter the dataframe
+main_df = all_df[(all_df["order_approved_at"].dt.date >= start_date) & (all_df["order_approved_at"].dt.date <= end_date)]
 
 # Create DataFrames
 daily_orders_df = create_daily_orders_df(main_df)
@@ -116,7 +117,7 @@ ax.tick_params(axis="y", labelsize=12)
 plt.grid(True, linestyle='--', alpha=0.7)
 st.pyplot(fig)
 
-# Order Items
+# Product Sales
 st.subheader("Product Sales")
 col1, col2 = st.columns(2)
 
@@ -154,7 +155,7 @@ ax[1].tick_params(axis='x', labelsize=14)
 
 st.pyplot(fig)
 
-# Distribution of Customers
+# Customer Distribution
 st.subheader("Customer Distribution")
 tab1, tab2, tab3 = st.tabs(["State", "Top 10 City", "Order Status"])
 
@@ -164,7 +165,6 @@ with tab1:
 
     sns.barplot(y=state.customer_state,
                 x=state.customer_count,
-                data=state,
                 palette=sns.color_palette("viridis", n_colors=len(state)),
                 ax=ax
                 )
@@ -176,7 +176,9 @@ with tab1:
     plt.yticks(fontsize=12)
 
     for i, v in enumerate(state.customer_count):
-        ax.text(v + 1000, i, str(v), color='black', va='center', ha='left', fontsize=10)
+        ax.text(v + 1000, i, str(v), color='black',
+
+ va='center', ha='left', fontsize=10)
 
     x_max = state.customer_count.max() + 3000
     plt.xlim(0, x_max)
