@@ -2,25 +2,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import streamlit as st
+from babel.numbers import format_currency
 import ssl
-import urllib.request
-
-# Nonaktifkan verifikasi sertifikat SSL
 ssl._create_default_https_context = ssl._create_unverified_context
-
-# URL file CSV
-
-url = 'https://raw.githubusercontent.com/uray03/Analis_Data/main/Dashboard/all_data.csv'
-
-# Coba baca CSV dengan parameter untuk menangani kesalahan
-try:
-    all_df = pd.read_csv(url, error_bad_lines=False)  # Mengabaikan baris yang menyebabkan kesalahan
-    print(all_df.head())
-except pd.errors.ParserError as e:
-    print(f"ParserError: {e}")
-except Exception as e:
-    print(f"Error: {e}")
-
 
 
 # Set uniform style and color palette
@@ -31,50 +15,41 @@ def create_daily_orders_df(df):
     daily_orders_df = df.resample(rule='D', on='order_approved_at').agg({
         "order_id": "nunique",
         "payment_value": "sum"
-    })
-    daily_orders_df = daily_orders_df.reset_index()
+    }).reset_index()
     daily_orders_df.rename(columns={"order_id": "order_count", "payment_value": "revenue"}, inplace=True)
     return daily_orders_df
 
 def create_sum_spend_df(df):
-    sum_spend_df = df.resample(rule='D', on='order_approved_at').agg({"payment_value": "sum"})
-    sum_spend_df = sum_spend_df.reset_index()
+    sum_spend_df = df.resample(rule='D', on='order_approved_at').agg({"payment_value": "sum"}).reset_index()
     sum_spend_df.rename(columns={"payment_value": "total_spend"}, inplace=True)
     return sum_spend_df
 
 def create_sum_order_items_df(df):
     sum_order_items_df = df.groupby("product_category_name_english")["product_id"].count().reset_index()
     sum_order_items_df.rename(columns={"product_id": "product_count"}, inplace=True)
-    sum_order_items_df = sum_order_items_df.sort_values(by='product_count', ascending=False)
-    return sum_order_items_df
+    return sum_order_items_df.sort_values(by='product_count', ascending=False)
 
 def review_score_df(df):
     review_scores = df['review_score'].value_counts().sort_values(ascending=False)
-    most_common_score = review_scores.idxmax()
-    return review_scores, most_common_score
+    return review_scores, review_scores.idxmax()
 
 def create_bystate_df(df):
     bystate_df = df.groupby(by="customer_state").customer_id.nunique().reset_index()
     bystate_df.rename(columns={"customer_id": "customer_count"}, inplace=True)
-    most_common_state = bystate_df.loc[bystate_df['customer_count'].idxmax(), 'customer_state']
-    bystate_df = bystate_df.sort_values(by='customer_count', ascending=False)
-    return bystate_df, most_common_state
+    return bystate_df.sort_values(by='customer_count', ascending=False), bystate_df.loc[bystate_df['customer_count'].idxmax(), 'customer_state']
 
 def create_bycity_df(df):
     bycity_df = df.groupby(by="customer_city").customer_id.nunique().reset_index()
     bycity_df.rename(columns={"customer_id": "total_customer"}, inplace=True)
-    most_common_city = bycity_df.loc[bycity_df['total_customer'].idxmax(), 'customer_city']
-    bycity_df = bycity_df.sort_values(by='total_customer', ascending=False)
-    return bycity_df, most_common_city
+    return bycity_df.sort_values(by='total_customer', ascending=False), bycity_df.loc[bycity_df['total_customer'].idxmax(), 'customer_city']
 
 def create_order_status(df):
     order_status_df = df["order_status"].value_counts().sort_values(ascending=False)
-    most_common_status = order_status_df.idxmax()
-    return order_status_df, most_common_status
+    return order_status_df, order_status_df.idxmax()
 
 # Load dataset
 datetime_columns = ["order_approved_at", "order_delivered_carrier_date", "order_delivered_customer_date", "order_estimated_delivery_date", "order_purchase_timestamp", "shipping_limit_date"]
-all_df = pd.read_csv('https://github.com/uray03/Analis_Data/blob/main/Dashboard/all_data.csv')
+all_df = pd.read_csv('https://raw.githubusercontent.com/uray03/Analis_Data/main/Dashboard/all_data.csv')
 all_df.sort_values(by="order_approved_at", inplace=True)
 all_df.reset_index(inplace=True)
 
@@ -88,7 +63,7 @@ max_date = all_df["order_approved_at"].max()
 
 with st.sidebar:
     st.title("Dicoding E-Commerce")
-    st.image('https://raw.githubusercontent.com/miqbaljaffar/Submission-Analisis-Data/main/Dashboard/logo.png')
+    st.image('https://raw.githubusercontent.com/uray03/Analis_Data/blob/main/Dashboard/logo.png')
     start_date, end_date = st.date_input(
         label="Date Range",
         min_value=min_date,
@@ -147,7 +122,7 @@ def plot_top_bottom_5_products(df):
     ax[0].set_title("Top 5 Best-Selling Products", fontsize=20, weight='bold')
     ax[0].tick_params(axis='y', labelsize=12)
     ax[0].tick_params(axis='x', labelsize=12)
-    ax[0].bar_label(ax[0].containers[0], fmt='%d', label_type='edge', fontsize=12)  # Add labels to bars
+    ax[0].bar_label(ax[0].containers[0], fmt='%d', label_type='edge', fontsize=12)
 
     # Bottom 5 Products
     sns.barplot(x="product_count", y="product_category_name_english", 
@@ -158,12 +133,10 @@ def plot_top_bottom_5_products(df):
     ax[1].yaxis.tick_right()
     ax[1].tick_params(axis='y', labelsize=12)
     ax[1].tick_params(axis='x', labelsize=12)
-    ax[1].bar_label(ax[1].containers[0], fmt='%d', label_type='edge', fontsize=12)  # Add labels to bars
+    ax[1].bar_label(ax[1].containers[0], fmt='%d', label_type='edge', fontsize=12)
 
-    # Main title and layout adjustment
     plt.suptitle("Sales Performance of Product Categories", fontsize=26, weight='bold')
     plt.subplots_adjust(top=0.85)
-
     st.pyplot(fig)
 
 plot_top_bottom_5_products(sum_order_items_df)
@@ -176,11 +149,8 @@ with tab1:
     st.markdown(f"Most Common State: **{most_common_state}**")
     fig, ax = plt.subplots(figsize=(12, 8))
 
-    # Determine the most common state and color palette
-    most_common_state = state.loc[state['customer_count'].idxmax(), 'customer_state']
     color_palette = ["#FF4500" if state == most_common_state else "#87CEFA" for state in state['customer_state']]
 
-    # Plot
     sns.barplot(x='customer_count', y='customer_state', data=state, palette=color_palette, orient='h', ax=ax)
     ax.set_title("Customer Distribution by State", fontsize=18, weight='bold')
     ax.set_xlabel("Number of Customers", fontsize=14)
@@ -188,11 +158,9 @@ with tab1:
     ax.tick_params(axis='x', labelsize=12)
     ax.tick_params(axis='y', labelsize=12)
 
-    # Set x-axis limit
-    x_max = state['customer_count'].max() + 500  # Extra space for labels
+    x_max = state['customer_count'].max() + 500
     ax.set_xlim(0, x_max)
 
-    # Annotate bars with count
     for p in ax.patches:
         ax.annotate(f'{p.get_width():,}', 
                     (p.get_width() + 100, p.get_y() + p.get_height() / 2),
@@ -207,21 +175,38 @@ with tab1:
 with tab2:
     st.markdown(f"Most Common City: **{most_common_city}**")
     fig, ax = plt.subplots(figsize=(12, 8))
-    sns.barplot(x='total_customer', y='customer_city', data=city.head(10), palette="Blues_r", ax=ax)
-    ax.set_title("Top 10 Cities with the Most Customers", fontsize=18, weight='bold')
+    top_10_cities = city.head(10)
+
+    sns.barplot(x='total_customer', y='customer_city', data=top_10_cities, palette="coolwarm", ax=ax)
+    ax.set_title("Top 10 Cities by Customer Count", fontsize=18, weight='bold')
     ax.set_xlabel("Number of Customers", fontsize=14)
     ax.set_ylabel("City", fontsize=14)
     ax.tick_params(axis='x', labelsize=12)
     ax.tick_params(axis='y', labelsize=12)
+
+    x_max = top_10_cities['total_customer'].max() + 1000
+    ax.set_xlim(0, x_max)
+
+    for p in ax.patches:
+        ax.annotate(f'{p.get_width():,}', 
+                    (p.get_width() + 100, p.get_y() + p.get_height() / 2),
+                    va='center',
+                    ha='left',
+                    fontsize=12,
+                    color='black')
+
+    plt.tight_layout()
     st.pyplot(fig)
 
 with tab3:
     st.markdown(f"Most Common Order Status: **{common_status}**")
-    fig, ax = plt.subplots(figsize=(12, 8))
-    sns.barplot(x=order_status.values, y=order_status.index, palette="coolwarm", ax=ax)
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    order_status.plot.pie(autopct='%1.1f%%', ax=ax, colors=sns.color_palette("Set2", 8))
+
+    ax.set_ylabel("")
     ax.set_title("Order Status Distribution", fontsize=18, weight='bold')
-    ax.set_xlabel("Order Count", fontsize=14)
-    ax.set_ylabel("Order Status", fontsize=14)
-    ax.tick_params(axis='x', labelsize=12)
-    ax.tick_params(axis='y', labelsize=12)
+
     st.pyplot(fig)
+
+st.caption("© 2024 Uray Hafizh")
