@@ -4,8 +4,9 @@ import seaborn as sns
 import streamlit as st
 from babel.numbers import format_currency
 import ssl
-ssl._create_default_https_context = ssl._create_unverified_context
 
+# Disable SSL certificate verification
+ssl._create_default_https_context = ssl._create_unverified_context
 
 # Set uniform style and color palette
 sns.set(style='whitegrid')
@@ -73,6 +74,7 @@ with st.sidebar:
 
 main_df = all_df[(all_df["order_approved_at"] >= str(start_date)) & (all_df["order_approved_at"] <= str(end_date))]
 
+# Create DataFrames for analysis
 daily_orders_df = create_daily_orders_df(main_df)
 sum_spend_df = create_sum_spend_df(main_df)
 sum_order_items_df = create_sum_order_items_df(main_df)
@@ -107,6 +109,35 @@ ax.set_ylabel("Total Income (BRL)", fontsize=14)
 ax.tick_params(axis="x", rotation=45, labelsize=12)
 ax.tick_params(axis="y", labelsize=12)
 plt.grid(True, linestyle='--', alpha=0.7)
+st.pyplot(fig)
+
+# Visualisasi top 10 kategori produk terlaris
+products_url = 'https://raw.githubusercontent.com/uray03/Submission_analisis_data_python/main/.ipynb_checkpoints/Data/E-Commerce_Public_Dataset/products_dataset.csv'
+products_df = pd.read_csv(products_url)
+
+# Menggabungkan kedua DataFrame
+merged_df = main_df.merge(products_df, on='product_id')
+
+# Menghitung jumlah penjualan berdasarkan kategori produk
+top_categories = merged_df['product_category_name_english'].value_counts().head(10)
+
+# Visualisasi Top 10 Kategori Produk Terlaris
+st.title('Top 10 Kategori Produk Terlaris')
+fig, ax = plt.subplots(figsize=(12, 8))
+sns.barplot(x=top_categories.values, y=top_categories.index, palette='viridis', ax=ax)
+ax.set_title('Top 10 Kategori Produk Terlaris', fontsize=16)
+ax.set_xlabel('Jumlah Penjualan', fontsize=14)
+ax.set_ylabel('Kategori Produk', fontsize=14)
+st.pyplot(fig)
+
+# Visualisasi distribusi status pesanan
+st.title('Distribusi Status Pesanan')
+fig, ax = plt.subplots(figsize=(10, 6))
+order_status_distribution = main_df['order_status'].value_counts()
+order_status_distribution.plot(kind='bar', color=sns.color_palette('Set2'), ax=ax)
+ax.set_title('Distribusi Status Pesanan')
+ax.set_xlabel('Status Pesanan')
+ax.set_ylabel('Jumlah Pesanan')
 st.pyplot(fig)
 
 # Product Sales - Top 5 and Bottom 5 Products
@@ -152,61 +183,37 @@ with tab1:
     color_palette = ["#FF4500" if state == most_common_state else "#87CEFA" for state in state['customer_state']]
 
     sns.barplot(x='customer_count', y='customer_state', data=state, palette=color_palette, orient='h', ax=ax)
-    ax.set_title("Customer Distribution by State", fontsize=18, weight='bold')
+    ax.set_title("Customer Distribution by State", fontsize=16)
     ax.set_xlabel("Number of Customers", fontsize=14)
-    ax.set_ylabel("State", fontsize=14)
-    ax.tick_params(axis='x', labelsize=12)
-    ax.tick_params(axis='y', labelsize=12)
-
-    x_max = state['customer_count'].max() + 500
-    ax.set_xlim(0, x_max)
-
-    for p in ax.patches:
-        ax.annotate(f'{p.get_width():,}', 
-                    (p.get_width() + 100, p.get_y() + p.get_height() / 2),
-                    va='center',
-                    ha='left',
-                    fontsize=12,
-                    color='black')
-
-    plt.tight_layout()
+    ax.set_ylabel("States", fontsize=14)
     st.pyplot(fig)
 
 with tab2:
     st.markdown(f"Most Common City: **{most_common_city}**")
     fig, ax = plt.subplots(figsize=(12, 8))
-    top_10_cities = city.head(10)
 
-    sns.barplot(x='total_customer', y='customer_city', data=top_10_cities, palette="coolwarm", ax=ax)
-    ax.set_title("Top 10 Cities by Customer Count", fontsize=18, weight='bold')
+    color_palette = ["#FF4500" if city == most_common_city else "#87CEFA" for city in city['customer_city']]
+
+    sns.barplot(x='total_customer', y='customer_city', data=city, palette=color_palette, orient='h', ax=ax)
+    ax.set_title("Customer Distribution by City", fontsize=16)
     ax.set_xlabel("Number of Customers", fontsize=14)
-    ax.set_ylabel("City", fontsize=14)
-    ax.tick_params(axis='x', labelsize=12)
-    ax.tick_params(axis='y', labelsize=12)
-
-    x_max = top_10_cities['total_customer'].max() + 1000
-    ax.set_xlim(0, x_max)
-
-    for p in ax.patches:
-        ax.annotate(f'{p.get_width():,}', 
-                    (p.get_width() + 100, p.get_y() + p.get_height() / 2),
-                    va='center',
-                    ha='left',
-                    fontsize=12,
-                    color='black')
-
-    plt.tight_layout()
+    ax.set_ylabel("Cities", fontsize=14)
     st.pyplot(fig)
 
 with tab3:
     st.markdown(f"Most Common Order Status: **{common_status}**")
-    fig, ax = plt.subplots(figsize=(10, 8))
-
-    order_status.plot.pie(autopct='%1.1f%%', ax=ax, colors=sns.color_palette("Set2", 8))
-
-    ax.set_ylabel("")
-    ax.set_title("Order Status Distribution", fontsize=18, weight='bold')
-
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.barplot(x=order_status.index, y=order_status.values, palette='viridis', ax=ax)
+    ax.set_title("Distribution of Order Status", fontsize=16)
+    ax.set_xlabel("Order Status", fontsize=14)
+    ax.set_ylabel("Count", fontsize=14)
     st.pyplot(fig)
 
-st.caption("© 2024 Uray Hafizh")
+# Product Review Analysis
+st.subheader("Product Review Analysis")
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.barplot(x=review_score.index, y=review_score.values, palette='viridis', ax=ax)
+ax.set_title("Distribution of Review Scores", fontsize=16)
+ax.set_xlabel("Review Score", fontsize=14)
+ax.set_ylabel("Count", fontsize=14)
+st.pyplot(fig)
